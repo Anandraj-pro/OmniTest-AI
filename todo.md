@@ -14,11 +14,11 @@ Grouped by area, roughly in priority order.
       and set `OMNI_SLACK_WEBHOOK_URL=...` — enables benchmark + suite-failure alerts.
 
 ## 3. GitHub Pages + Allure report
-- [ ] Confirm the first workflow run finished: https://github.com/Anandraj-pro/OmniTest-AI/actions
-      (or `gh run watch`) — it creates the `gh-pages` branch.
-- [ ] Repo → Settings → Pages → deploy from the `gh-pages` branch.
-- [ ] Once live, set `OMNI_REPORT_BASE_URL=https://Anandraj-pro.github.io/OmniTest-AI/`
-      in `.env` → the Slack "Open Allure Report" button goes live.
+- [x] Confirm the first workflow run finished — green, `gh-pages` branch created.
+- [x] Repo made public + GitHub Pages enabled on the `gh-pages` branch (built, HTTP 200).
+      Live at https://anandraj-pro.github.io/OmniTest-AI/
+- [x] Set `OMNI_REPORT_BASE_URL=https://anandraj-pro.github.io/OmniTest-AI/` in `.env`
+      → the Slack "Open Allure Report" button is wired.
 
 ## 4. CI configuration (GitHub Actions)
 - [ ] Add repo secret `ANTHROPIC_API_KEY` (Settings → Secrets and variables → Actions)
