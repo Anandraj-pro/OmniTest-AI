@@ -52,7 +52,7 @@ jobs:
         run: |
           pytest -m "smoke" --alluredir=artifacts/allure-results || true
 
-      # Pull existing report history so trends persist across runs.
+      # Pull the previously published report so trend history persists.
       - name: Fetch Allure history
         if: always()
         continue-on-error: true
@@ -61,14 +61,24 @@ jobs:
           ref: gh-pages
           path: gh-pages
 
-      - name: Build Allure report (with history)
+      # Generate the report with the Allure CLI (Docker-free, reliable).
+      - name: Install Allure CLI
         if: always()
-        uses: simple-elf/allure-report-action@v1.12
-        with:
-          allure_results: artifacts/allure-results
-          allure_history: allure-history
-          gh_pages: gh-pages
-          keep_reports: 30
+        run: |
+          curl -sSL -o allure.tgz \
+            https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
+          tar -xzf allure.tgz
+          echo "$PWD/allure-2.30.0/bin" >> "$GITHUB_PATH"
+
+      - name: Generate Allure report (with history)
+        if: always()
+        run: |
+          mkdir -p artifacts/allure-results
+          # carry over history from the previously published report, if any
+          if [ -d gh-pages/history ]; then
+            cp -r gh-pages/history artifacts/allure-results/history
+          fi
+          allure generate artifacts/allure-results --clean -o allure-history
 
       - name: Publish to GitHub Pages
         if: always()
