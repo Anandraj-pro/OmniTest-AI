@@ -577,6 +577,68 @@ trusting local on release gates.
 
 ---
 
+## 14. Sprint Timeline (how the team + framework run a 2-week sprint)
+
+How a 4-person QA team runs a 2-week sprint (50–55 stories) once OmniTest-AI is
+doing the heavy lifting. Shorthand: **L** = Lead (both skills), **AE** =
+Automation Engineer, **Q1 / Q2** = Functional QA.
+
+### 14.1 Phase timeline — 10 working days
+
+| Days | Phase | Team focus | What the framework does |
+|------|-------|-----------|-------------------------|
+| **1–2** | Plan & write ACs | All four write/clean acceptance criteria using `docs/acceptance_criteria_template.md`; tier every story **P1/P2/P3** | — (human-only; AI can't do this) |
+| **2–3** | Generate & review | Q1/Q2 feed ACs → `TestGeneratorAgent.gherkin()` → review drafts. L reviews for correctness | Drafts `.feature` files in seconds from ACs |
+| **3–7** | Build the bulk | AE + L wire step defs reusing `common_steps.py`; Q1/Q2 keep generating/reviewing next stories | Self-healing `ai_page` absorbs selector churn; CI publishes Allure per push |
+| **6–9** | Stabilize | Team triages failures each morning; L + one QA take the P1 complex/exploratory stories | Nightly regression + LLM benchmark run; Slack alerts on any red |
+| **9–10** | Sign-off & retro | Regression review, release decision, retro | Allure report = sign-off artifact; prompt dashboard = manager view |
+
+### 14.2 Daily rhythm (every day, not just once)
+
+```
+MORNING   → Triage last night's Slack alerts (regression failures + LLM accuracy).
+            Self-healing already fixed trivial UI breaks overnight.
+STANDUP   → Blockers, story handoffs (AC-writer → step-wirer).
+DAY WORK  → Parallel lanes (below).
+EVENING   → Nightly scheduler fires: full regression + qwen-vs-Claude benchmark
+            → Allure report, prompt dashboard, trend chart all refresh.
+```
+
+The key: **the framework works the night shift.** Regression, self-healing,
+benchmarks, and reports run while nobody's watching — the team walks in to a
+triaged list, not a blank slate.
+
+### 14.3 Parallel lanes (why 50–55 fits)
+
+The four don't work serially on one story — they run a **pipeline**:
+
+```
+Q1/Q2:  AC → generate Gherkin → review  ──┐
+                                          ├─→  AE/L: wire steps (reuse common_steps) → merge
+L:      review drafts, unblock  ──────────┘                                    │
+                                                                   nightly regression picks it up
+```
+
+While AE wires story #12's steps, Q1 is already reviewing #15's generated Gherkin.
+That overlap turns ~3 stories/day (manual) into ~5–5.5/day.
+
+### 14.4 Definition of Done per story
+
+Not "done" until (see §12.5): AC written & tiered → Gherkin generated &
+**human-reviewed** → steps wired (reused where possible) → passes locally →
+merged → auto-joined nightly regression.
+
+### 14.5 Guardrails
+
+- **Days 1–2 are sacred.** Good ACs are the fuel; rushing them poisons every
+  generated test downstream.
+- **Target ~60–70% automated this sprint** (deterministic API/UI/email flows).
+  Smoke-cover P2, backlog P3 — don't chase 100%.
+- **Review is the real bottleneck at this volume**, not authoring. Protect
+  L + one QA's review blocks daily.
+
+---
+
 ## Q&A (post your questions here)
 
 > Add your questions below and I'll answer each one inline in this file.
