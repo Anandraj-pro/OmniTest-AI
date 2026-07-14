@@ -1,0 +1,16 @@
+# Secrets
+.env
+secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Test artifacts
+artifacts/
+.pytest_cache/
+
+# IDE
+.idea/

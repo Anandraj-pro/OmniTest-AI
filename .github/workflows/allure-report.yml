@@ -1,0 +1,79 @@
+name: Tests & Allure report
+
+# Runs the suite and publishes the Allure report to GitHub Pages.
+# The published URL (https://<owner>.github.io/<repo>/) is what you put in
+# OMNI_REPORT_BASE_URL so Slack alerts get a clickable "Open Allure Report" button.
+#
+# One-time setup:
+#   1. Repo → Settings → Pages → Source = "Deploy from a branch", branch = gh-pages.
+#   2. (Optional) add repo secret ANTHROPIC_API_KEY to run the SMART-tier tests.
+
+on:
+  schedule:
+    - cron: "30 2 * * *"      # nightly 02:30 UTC
+  workflow_dispatch: {}        # manual "Run workflow" button
+  push:
+    branches: [main]
+
+# Let a newer run supersede an in-flight one.
+concurrency:
+  group: allure-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write              # needed to push the gh-pages branch
+
+jobs:
+  test-and-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      # NOTE: CHEAP/BALANCED tiers default to a local Ollama that isn't present in
+      # CI. Run only tiers/markers that don't need it (adjust `-m` for your suite).
+      # `|| true` + `if: always()` ensure the report publishes even when tests fail.
+      - name: Run tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # In CI there's no local Ollama — route everything to Claude (skip if no key).
+          OMNI_PROVIDER_CHEAP: anthropic
+          OMNI_PROVIDER_BALANCED: anthropic
+        run: |
+          pytest -m "smoke" --alluredir=artifacts/allure-results || true
+
+      # Pull existing report history so trends persist across runs.
+      - name: Fetch Allure history
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Build Allure report (with history)
+        if: always()
+        uses: simple-elf/allure-report-action@v1.12
+        with:
+          allure_results: artifacts/allure-results
+          allure_history: allure-history
+          gh_pages: gh-pages
+          keep_reports: 30
+
+      - name: Publish to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history

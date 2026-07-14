@@ -1,0 +1,38 @@
+# ── Core AI ─────────────────────────────────────────────
+anthropic>=0.69.0            # Claude SDK (subscription OAuth or API key)
+
+# ── Config / models (pydantic) ──────────────────────────
+pydantic>=2.7
+pydantic-settings>=2.3
+python-dotenv>=1.0
+pyyaml>=6.0
+
+# ── PRIMARY test stack: Playwright + pytest ─────────────
+playwright>=1.45             # run: playwright install chromium
+pytest>=8.2
+pytest-playwright>=0.5       # playwright fixtures for pytest
+pytest-bdd>=7.1              # BDD (Gherkin) on top of pytest
+pytest-xdist>=3.6            # parallel test execution
+
+# ── API testing ─────────────────────────────────────────
+httpx>=0.27
+jsonschema>=4.22
+
+# ── Reporting ───────────────────────────────────────────
+allure-pytest>=2.13
+
+# ── Email ───────────────────────────────────────────────
+# smtplib / imaplib are stdlib. Gmail-API adapter is optional:
+google-api-python-client>=2.130 ; extra == "gmail"
+google-auth-oauthlib>=1.2      ; extra == "gmail"
+
+# ── Scheduling / utils ──────────────────────────────────
+apscheduler>=3.10
+tenacity>=8.4
+faker>=25.0
+rich>=13.7                     # pretty logging
+
+# ── OPTIONAL: Robot Framework keyword library ───────────
+# Only needed if you also want to author suites in Robot (omnitest/robot/OmniAI.py).
+robotframework>=7.0 ; extra == "robot"
+allure-robotframework>=2.13 ; extra == "robot"
