@@ -125,6 +125,15 @@ td.num,th.num{text-align:right}
 .prio{font-weight:700}.p1{color:#f85149}.p2{color:#d29922}.p3{color:var(--mut)}
 .bar{height:8px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:6px}
 .bar>span{display:block;height:100%;background:#3fb950}
+details.epic{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:8px 0;overflow:hidden}
+details.epic>summary{cursor:pointer;padding:12px 14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;list-style:none}
+details.epic>summary::-webkit-details-marker{display:none}
+.epic .caret{color:var(--mut);transition:transform .15s;display:inline-block}
+details.epic[open]>summary .caret{transform:rotate(90deg)}
+.epic .ename{font-weight:700;min-width:150px}
+.epic .estat{color:var(--mut);font-size:12px}
+.epic .ebar{width:110px}.epic .inner{padding:0 14px 12px}
+.epic .inner table{margin-top:0}
 """
 
 
@@ -173,66 +182,73 @@ def _priority_table(per: dict[str, dict], manifest: dict[str, dict]) -> str:
             f'<th>Coverage</th><th class="num">%</th></tr>{rows}</table>')
 
 
-def _epic_rollup(per: dict[str, dict], manifest: dict[str, dict]) -> str:
-    epics: dict[str, dict] = defaultdict(
-        lambda: {"total": 0, "automated": 0, "passing": 0, "failing": 0, "cost": 0.0}
-    )
+_STORY_HEADER = ('<tr><th>Story</th><th>Prio</th><th>Type</th><th>State</th>'
+                 '<th class="num">Tests</th><th class="num">Pass</th>'
+                 '<th class="num">AI calls</th><th class="num">AI cost</th></tr>')
+
+
+def _sort_key(item, manifest):
+    sid, _ = item
+    return ((manifest.get(sid, {}).get("priority") or "P9").upper(), sid)
+
+
+def _story_row(sid: str, p: dict, meta: dict) -> str:
+    label, cls = _story_state(p)
+    prio = (meta.get("priority") or "").upper()
+    prio_html = f'<span class="prio {prio.lower()}">{prio}</span>' if prio else "—"
+    title = html.escape(meta.get("title", "") or "")
+    typ = html.escape(meta.get("type", "") or "—")
+    tests = p["tests"]
+    pf = f'{p["passed"]}/{tests}' if tests else "—"
+    return (f"<tr><td><b>{html.escape(sid)}</b><div class='sub'>{title}</div></td>"
+            f"<td>{prio_html}</td><td>{typ}</td>"
+            f"<td><span class='pill {cls}'>{html.escape(label)}</span></td>"
+            f"<td class='num'>{tests or '—'}</td><td class='num'>{pf}</td>"
+            f"<td class='num'>{p['ai_calls'] or '—'}</td>"
+            f"<td class='num'>${p['ai_cost']:.4f}</td></tr>")
+
+
+def _story_table(pairs: list, manifest: dict[str, dict]) -> str:
+    rows = "".join(_story_row(sid, p, manifest.get(sid, {}))
+                   for sid, p in sorted(pairs, key=lambda i: _sort_key(i, manifest)))
+    return f"<table>{_STORY_HEADER}{rows}</table>"
+
+
+def _epic_of(sid: str, manifest: dict[str, dict]) -> str:
+    return (manifest.get(sid, {}).get("epic") or "").strip() or "(no epic)"
+
+
+def _epic_sections(per: dict[str, dict], manifest: dict[str, dict]) -> str | None:
+    """Accordions: one <details> per epic; summary = rollup, body = its stories.
+    Returns None when epic grouping isn't meaningful (fall back to a flat table).
+    """
+    groups: dict[str, list] = defaultdict(list)
     for sid, p in per.items():
-        epic = (manifest.get(sid, {}).get("epic") or "").strip() or "(no epic)"
-        e = epics[epic]
-        e["total"] += 1
-        if p["tests"] > 0:
-            e["automated"] += 1
-        if p["tests"] and not p["failed"] and p["passed"] == p["tests"]:
-            e["passing"] += 1
-        if p["failed"]:
-            e["failing"] += 1
-        e["cost"] += p["ai_cost"]
-    # Only worth showing once there's more than one epic (or a real epic name).
-    if not epics or (len(epics) == 1 and "(no epic)" in epics):
-        return ""
-    rows = ""
-    for epic, e in sorted(epics.items()):
-        pct = e["automated"] / e["total"] if e["total"] else 0
-        fail = f'<span class="p1">{e["failing"]}</span>' if e["failing"] else "0"
-        rows += (f"<tr><td><b>{html.escape(epic)}</b></td>"
-                 f'<td class="num">{e["total"]}</td>'
-                 f'<td class="num">{e["automated"]}/{e["total"]}</td>'
-                 f'<td><div class="bar"><span style="width:{pct:.0%}"></span></div></td>'
-                 f'<td class="num">{pct:.0%}</td>'
-                 f'<td class="num">{e["passing"]}</td>'
-                 f'<td class="num">{fail}</td>'
-                 f'<td class="num">${e["cost"]:.4f}</td></tr>')
-    return ('<h3 style="margin-top:28px">By epic</h3>'
-            '<table><tr><th>Epic</th><th class="num">Stories</th>'
-            '<th class="num">Automated</th><th>Coverage</th><th class="num">%</th>'
-            '<th class="num">Passing</th><th class="num">Failing</th>'
-            '<th class="num">AI cost</th></tr>' + rows + '</table>')
-
-
-def _story_rows(per: dict[str, dict], manifest: dict[str, dict]) -> str:
-    def sort_key(item):
-        sid, p = item
-        prio = (manifest.get(sid, {}).get("priority") or "P9").upper()
-        return (prio, sid)
+        groups[_epic_of(sid, manifest)].append((sid, p))
+    if not groups or (len(groups) == 1 and "(no epic)" in groups):
+        return None
 
     out = ""
-    for sid, p in sorted(per.items(), key=sort_key):
-        meta = manifest.get(sid, {})
-        label, cls = _story_state(p)
-        prio = (meta.get("priority") or "").upper()
-        prio_html = f'<span class="prio {prio.lower()}">{prio}</span>' if prio else "—"
-        title = html.escape(meta.get("title", "") or "")
-        epic = html.escape(meta.get("epic", "") or "—")
-        typ = html.escape(meta.get("type", "") or "—")
-        tests = p["tests"]
-        pf = f'{p["passed"]}/{tests}' if tests else "—"
-        out += (f"<tr><td><b>{html.escape(sid)}</b><div class='sub'>{title}</div></td>"
-                f"<td>{epic}</td><td>{prio_html}</td><td>{typ}</td>"
-                f"<td><span class='pill {cls}'>{html.escape(label)}</span></td>"
-                f"<td class='num'>{tests or '—'}</td><td class='num'>{pf}</td>"
-                f"<td class='num'>{p['ai_calls'] or '—'}</td>"
-                f"<td class='num'>${p['ai_cost']:.4f}</td></tr>")
+    for epic, pairs in sorted(groups.items()):
+        total = len(pairs)
+        automated = sum(1 for _, p in pairs if p["tests"] > 0)
+        passing = sum(1 for _, p in pairs if p["tests"] and not p["failed"]
+                      and p["passed"] == p["tests"])
+        failing = sum(1 for _, p in pairs if p["failed"])
+        cost = sum(p["ai_cost"] for _, p in pairs)
+        pct = automated / total if total else 0
+        fail_html = f'<span class="p1">{failing} failing</span>' if failing else "0 failing"
+        summary = (
+            f'<summary><span class="caret">▸</span>'
+            f'<span class="ename">{html.escape(epic)}</span>'
+            f'<span class="estat">{total} stories</span>'
+            f'<div class="bar ebar"><span style="width:{pct:.0%}"></span></div>'
+            f'<span class="estat">{automated}/{total} automated ({pct:.0%})</span>'
+            f'<span class="estat">{passing} passing · {fail_html}</span>'
+            f'<span class="estat">${cost:.4f}</span></summary>'
+        )
+        out += (f'<details class="epic">{summary}'
+                f'<div class="inner">{_story_table(pairs, manifest)}</div></details>')
     return out
 
 
@@ -255,8 +271,16 @@ def build_director_dashboard(out: Path | None = None) -> Path:
 
     cards, snapshot = _kpi_cards(per, manifest)
     prio_table = _priority_table(per, manifest)
-    epic_table = _epic_rollup(per, manifest)
-    rows = _story_rows(per, manifest)
+    epic_sections = _epic_sections(per, manifest)
+    if epic_sections:
+        stories_html = epic_sections
+        stories_heading = f"By epic · {len(per)} stories (click to expand)"
+    else:
+        stories_html = _story_table(list(per.items()), manifest)
+        stories_heading = f"Stories ({len(per)})"
+    if not per:
+        stories_html = ('<p class="sub">No stories found. Tag tests with '
+                        '@pytest.mark.story(...) or add docs/stories.json.</p>')
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     src = ("manifest" if manifest else "Allure+prompts only (no docs/stories.json)")
 
@@ -268,13 +292,8 @@ def build_director_dashboard(out: Path | None = None) -> Path:
 <div class="wrap">
 <div class="cards">{cards}</div>
 {prio_table}
-{epic_table}
-<h3 style="margin-top:28px">Stories ({len(per)})</h3>
-<table>
-<tr><th>Story</th><th>Epic</th><th>Prio</th><th>Type</th><th>State</th>
-<th class="num">Tests</th><th class="num">Pass</th><th class="num">AI calls</th><th class="num">AI cost</th></tr>
-{rows or '<tr><td colspan="9" class="sub">No stories found. Tag tests with @pytest.mark.story(...) or add docs/stories.json.</td></tr>'}
-</table>
+<h3 style="margin-top:28px">{stories_heading}</h3>
+{stories_html}
 </div></body></html>"""
 
     out = out or (settings._abs(Path("artifacts/reports/director-dashboard.html")))

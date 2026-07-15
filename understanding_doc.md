@@ -684,8 +684,9 @@ every agent call that test makes is logged with `tags.story`, and (b) stamps the
 Allure `story` label. Both sides now share the ID, so the dashboard can roll up:
 
 - **Coverage** — automated / total, and a per-priority (P1/P2/P3) coverage bar
-- **By epic** — a rollup table: stories, automation coverage bar, passing/failing,
-  and AI cost per epic (shown when more than one epic is present)
+- **By epic** — expandable accordions: each epic's summary shows its coverage bar,
+  passing/failing, and AI cost; click to expand the stories inside it (falls back
+  to a flat story table when there's only one/no epic)
 - **Quality** — pass rate, passing vs failing stories
 - **Throughput** — a daily snapshot is appended to
   `artifacts/reports/director-history.csv` (trend it over the sprint)
