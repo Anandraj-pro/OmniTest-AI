@@ -4,7 +4,7 @@ Feature: User signup
   # Every step below already exists in steps/common_steps.py — this feature
   # needed ZERO new Python. That is the pattern to aim for at 50+ stories.
 
-  @api @smoke
+  @api
   Scenario: Create a user via the API
     Given the API base url is "https://api.example.com"
     When I POST "/users" with a fake user
