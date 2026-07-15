@@ -63,7 +63,9 @@ def _load_manifest(path: Path) -> dict[str, dict]:
 def _story_state(p: dict) -> tuple[str, str]:
     """Return (label, css-class) describing a story's automation/pass state."""
     if p["tests"] == 0:
-        status = (p.get("manifest_status") or "not automated").lower()
+        # "no tests" (not "not automated") so it doesn't collide with an
+        # "automated" filter substring match.
+        status = (p.get("manifest_status") or "no tests").lower()
         cls = {"in_review": "review", "manual": "manual",
                "backlog": "backlog", "planned": "planned"}.get(status, "none")
         return status.replace("_", " "), cls
@@ -138,6 +140,8 @@ details.epic[open]>summary .caret{transform:rotate(90deg)}
 .search input{background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 12px;width:min(320px,60vw);font:inherit}
 .search .cnt{color:var(--mut);font-size:12px}
 tr.hidden,details.hidden{display:none}
+.card.clickable{cursor:pointer;transition:border-color .12s}
+.card.clickable:hover{border-color:var(--acc)}
 """
 
 # Live client-side filter (self-contained; the page opens offline).
@@ -163,6 +167,7 @@ _SCRIPT = """<script>
     if(cnt) cnt.textContent=q?(shown+' match'+(shown===1?'':'es')):'';
   }
   box.addEventListener('input',apply);
+  window.omniFilter=function(q){ box.value=q; apply(); box.scrollIntoView({behavior:'smooth',block:'center'}); };
 })();
 </script>"""
 
@@ -179,12 +184,25 @@ def _kpi_cards(per: dict[str, dict], manifest: dict[str, dict]) -> tuple[str, di
     cov = f"{automated}/{total} ({automated / total:.0%})" if total else "0"
     pass_rate = f"{passed_execs / execs:.0%}" if execs else "—"
 
-    kpis = {"stories": total, "automated": cov, "passing": passing,
-            "failing": failing, "pass rate": pass_rate, "AI cost": f"${cost:.4f}"}
-    cards = "".join(
-        f'<div class="card"><div class="n">{v}</div><div class="l">{k}</div></div>'
-        for k, v in kpis.items()
-    )
+    # (label, value, filter-query | None). A query makes the card clickable and
+    # sets the story filter; "" clears it (show all).
+    card_defs = [
+        ("stories", total, ""),
+        ("automated", cov, "automated"),
+        ("passing", passing, "passing"),
+        ("failing", failing, "failing"),
+        ("pass rate", pass_rate, None),
+        ("AI cost", f"${cost:.4f}", None),
+    ]
+    cards = ""
+    for label, val, q in card_defs:
+        if q is None:
+            cards += f'<div class="card"><div class="n">{val}</div><div class="l">{label}</div></div>'
+        else:
+            tip = "show all stories" if q == "" else f"filter: {q}"
+            cards += (f'<div class="card clickable" title="{tip}" '
+                      f"onclick=\"omniFilter('{q}')\">"
+                      f'<div class="n">{val}</div><div class="l">{label} ▸</div></div>')
     snapshot = {"total": total, "automated": automated, "passing": passing,
                 "failing": failing, "ai_cost": round(cost, 6)}
     return cards, snapshot

@@ -690,6 +690,9 @@ Allure `story` label. Both sides now share the ID, so the dashboard can roll up:
 - **Live filter** — a search box filters stories as you type across id, title,
   priority, type, state, and epic; epics with no match hide, and matching epics
   auto-expand (pure inline JS — the page still opens offline)
+- **Clickable KPI cards** — click *automated / passing / failing* to filter the
+  story list to that state, or *stories* to clear; the cards drive the same
+  filter box
 - **Quality** — pass rate, passing vs failing stories
 - **Throughput** — a daily snapshot is appended to
   `artifacts/reports/director-history.csv` (trend it over the sprint)
