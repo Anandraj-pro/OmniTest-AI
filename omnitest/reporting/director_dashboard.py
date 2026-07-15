@@ -173,6 +173,43 @@ def _priority_table(per: dict[str, dict], manifest: dict[str, dict]) -> str:
             f'<th>Coverage</th><th class="num">%</th></tr>{rows}</table>')
 
 
+def _epic_rollup(per: dict[str, dict], manifest: dict[str, dict]) -> str:
+    epics: dict[str, dict] = defaultdict(
+        lambda: {"total": 0, "automated": 0, "passing": 0, "failing": 0, "cost": 0.0}
+    )
+    for sid, p in per.items():
+        epic = (manifest.get(sid, {}).get("epic") or "").strip() or "(no epic)"
+        e = epics[epic]
+        e["total"] += 1
+        if p["tests"] > 0:
+            e["automated"] += 1
+        if p["tests"] and not p["failed"] and p["passed"] == p["tests"]:
+            e["passing"] += 1
+        if p["failed"]:
+            e["failing"] += 1
+        e["cost"] += p["ai_cost"]
+    # Only worth showing once there's more than one epic (or a real epic name).
+    if not epics or (len(epics) == 1 and "(no epic)" in epics):
+        return ""
+    rows = ""
+    for epic, e in sorted(epics.items()):
+        pct = e["automated"] / e["total"] if e["total"] else 0
+        fail = f'<span class="p1">{e["failing"]}</span>' if e["failing"] else "0"
+        rows += (f"<tr><td><b>{html.escape(epic)}</b></td>"
+                 f'<td class="num">{e["total"]}</td>'
+                 f'<td class="num">{e["automated"]}/{e["total"]}</td>'
+                 f'<td><div class="bar"><span style="width:{pct:.0%}"></span></div></td>'
+                 f'<td class="num">{pct:.0%}</td>'
+                 f'<td class="num">{e["passing"]}</td>'
+                 f'<td class="num">{fail}</td>'
+                 f'<td class="num">${e["cost"]:.4f}</td></tr>')
+    return ('<h3 style="margin-top:28px">By epic</h3>'
+            '<table><tr><th>Epic</th><th class="num">Stories</th>'
+            '<th class="num">Automated</th><th>Coverage</th><th class="num">%</th>'
+            '<th class="num">Passing</th><th class="num">Failing</th>'
+            '<th class="num">AI cost</th></tr>' + rows + '</table>')
+
+
 def _story_rows(per: dict[str, dict], manifest: dict[str, dict]) -> str:
     def sort_key(item):
         sid, p = item
@@ -218,6 +255,7 @@ def build_director_dashboard(out: Path | None = None) -> Path:
 
     cards, snapshot = _kpi_cards(per, manifest)
     prio_table = _priority_table(per, manifest)
+    epic_table = _epic_rollup(per, manifest)
     rows = _story_rows(per, manifest)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     src = ("manifest" if manifest else "Allure+prompts only (no docs/stories.json)")
@@ -230,6 +268,7 @@ def build_director_dashboard(out: Path | None = None) -> Path:
 <div class="wrap">
 <div class="cards">{cards}</div>
 {prio_table}
+{epic_table}
 <h3 style="margin-top:28px">Stories ({len(per)})</h3>
 <table>
 <tr><th>Story</th><th>Epic</th><th>Prio</th><th>Type</th><th>State</th>
