@@ -134,7 +134,37 @@ details.epic[open]>summary .caret{transform:rotate(90deg)}
 .epic .estat{color:var(--mut);font-size:12px}
 .epic .ebar{width:110px}.epic .inner{padding:0 14px 12px}
 .epic .inner table{margin-top:0}
+.search{display:flex;gap:10px;align-items:center;margin:6px 0 12px}
+.search input{background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 12px;width:min(320px,60vw);font:inherit}
+.search .cnt{color:var(--mut);font-size:12px}
+tr.hidden,details.hidden{display:none}
 """
+
+# Live client-side filter (self-contained; the page opens offline).
+_SCRIPT = """<script>
+(function(){
+  var box=document.getElementById('filter');
+  if(!box) return;
+  var rows=[].slice.call(document.querySelectorAll('tr.story-row'));
+  var epics=[].slice.call(document.querySelectorAll('details.epic'));
+  var cnt=document.getElementById('filter-count');
+  function apply(){
+    var q=box.value.trim().toLowerCase(), shown=0;
+    rows.forEach(function(r){
+      var hit=!q||(r.getAttribute('data-search')||'').indexOf(q)!==-1;
+      r.classList.toggle('hidden',!hit); if(hit) shown++;
+    });
+    epics.forEach(function(d){
+      var vis=0;
+      d.querySelectorAll('tr.story-row').forEach(function(r){ if(!r.classList.contains('hidden')) vis++; });
+      d.classList.toggle('hidden',vis===0);
+      if(q) d.open=vis>0;
+    });
+    if(cnt) cnt.textContent=q?(shown+' match'+(shown===1?'':'es')):'';
+  }
+  box.addEventListener('input',apply);
+})();
+</script>"""
 
 
 def _kpi_cards(per: dict[str, dict], manifest: dict[str, dict]) -> tuple[str, dict]:
@@ -200,7 +230,11 @@ def _story_row(sid: str, p: dict, meta: dict) -> str:
     typ = html.escape(meta.get("type", "") or "—")
     tests = p["tests"]
     pf = f'{p["passed"]}/{tests}' if tests else "—"
-    return (f"<tr><td><b>{html.escape(sid)}</b><div class='sub'>{title}</div></td>"
+    blob = " ".join([sid, meta.get("title", "") or "", prio,
+                     meta.get("type", "") or "", label, meta.get("epic", "") or ""]).lower()
+    search = html.escape(blob, quote=True)
+    return (f'<tr class="story-row" data-search="{search}">'
+            f"<td><b>{html.escape(sid)}</b><div class='sub'>{title}</div></td>"
             f"<td>{prio_html}</td><td>{typ}</td>"
             f"<td><span class='pill {cls}'>{html.escape(label)}</span></td>"
             f"<td class='num'>{tests or '—'}</td><td class='num'>{pf}</td>"
@@ -278,7 +312,12 @@ def build_director_dashboard(out: Path | None = None) -> Path:
     else:
         stories_html = _story_table(list(per.items()), manifest)
         stories_heading = f"Stories ({len(per)})"
-    if not per:
+    search_box = ""
+    if per:
+        search_box = ('<div class="search">'
+                      '<input id="filter" type="search" placeholder="Filter stories: id, title, priority, type, state, epic…">'
+                      '<span class="cnt" id="filter-count"></span></div>')
+    else:
         stories_html = ('<p class="sub">No stories found. Tag tests with '
                         '@pytest.mark.story(...) or add docs/stories.json.</p>')
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -293,8 +332,9 @@ def build_director_dashboard(out: Path | None = None) -> Path:
 <div class="cards">{cards}</div>
 {prio_table}
 <h3 style="margin-top:28px">{stories_heading}</h3>
+{search_box}
 {stories_html}
-</div></body></html>"""
+</div>{_SCRIPT}</body></html>"""
 
     out = out or (settings._abs(Path("artifacts/reports/director-dashboard.html")))
     out.parent.mkdir(parents=True, exist_ok=True)

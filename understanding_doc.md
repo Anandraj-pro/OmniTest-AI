@@ -687,6 +687,9 @@ Allure `story` label. Both sides now share the ID, so the dashboard can roll up:
 - **By epic** — expandable accordions: each epic's summary shows its coverage bar,
   passing/failing, and AI cost; click to expand the stories inside it (falls back
   to a flat story table when there's only one/no epic)
+- **Live filter** — a search box filters stories as you type across id, title,
+  priority, type, state, and epic; epics with no match hide, and matching epics
+  auto-expand (pure inline JS — the page still opens offline)
 - **Quality** — pass rate, passing vs failing stories
 - **Throughput** — a daily snapshot is appended to
   `artifacts/reports/director-history.csv` (trend it over the sprint)
