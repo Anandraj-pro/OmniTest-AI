@@ -695,6 +695,18 @@ and prompt logs; with it, you also see planned-but-not-yet-automated stories
 (in-review / backlog), which is what makes it a true "X of 55 done" director view.
 Both dashboards refresh automatically after every scheduled run.
 
+**Don't hand-maintain the manifest** — generate it from Jira:
+
+```bash
+python -m scripts.import_jira_stories --csv sprint.csv --issue-types Story
+```
+
+The importer auto-detects the common Jira headers (Issue key / Summary / Priority
+/ Status / Epic Name / Labels), normalizes Jira priority (Highest/High/… → P1/P2/P3)
+and status (To Do/In Progress/… → backlog/in_progress/in_review/done), infers the
+test `type` from an api/ui/email label, filters by issue type, and dedupes. Override
+any column with `--col-*` if your export differs.
+
 ---
 
 ## Q&A (post your questions here)

@@ -35,6 +35,7 @@ SMART runs on Claude (needs the key). See §10 and §13 of the understanding doc
 | `pytest -m smoke` | Run the smoke suite (markers: `api ui email smoke ai`) |
 | `python -m omnitest.reporting.prompt_dashboard` | Build the manager-facing prompt/cost dashboard |
 | `python -m omnitest.reporting.director_dashboard` | Build the QA-director view: throughput by story |
+| `python -m scripts.import_jira_stories --csv sprint.csv` | Generate `docs/stories.json` from a Jira CSV export |
 | `python -m scripts.benchmark_llms` | Benchmark Claude vs local qwen (email + API tasks) |
 | `scripts/bench_and_chart.sh` | Benchmark → CSV → regenerate trend chart in one step |
 
