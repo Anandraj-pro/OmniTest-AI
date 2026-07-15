@@ -639,6 +639,64 @@ merged → auto-joined nightly regression.
 
 ---
 
+## 15. Who does what, and how leadership sees progress
+
+### 15.1 The two engineers
+
+**Functional QA (Q1/Q2) — owns "what to test."** Writes the AC (`docs/acceptance_criteria_template.md`)
+→ generates the draft with `TestGeneratorAgent.gherkin()` → **reviews & corrects**
+(their real value: judging coverage, adding negative/boundary cases) → defines the
+semantic *expectations* the AI agents judge → exploratory on complex P1 stories.
+Rarely writes Python. Throughput = *stories specified & reviewed*.
+
+**Automation Engineer (AE) — owns "make it run."** Wires step definitions for the
+reviewed Gherkin, **reusing `common_steps.py`** (~60% of steps already exist) →
+uses the `conftest.py` fixtures (`api`/`ai_page`/`email` + agents) → leans on
+`ai_page` self-healing so selectors don't eat the sprint → runs, debugs, merges.
+Throughput = *automation stories completed / tests added*.
+
+### 15.2 The QA Lead — operational control
+
+Reviews AI-generated tests (via the **prompt dashboard** — every input/output),
+triages the morning **Slack alerts** + **Allure report**, watches the **benchmark
+trend** for local-model drift, and protects the review queue (the real bottleneck).
+
+### 15.3 The QA Director / org leader — `director_dashboard`
+
+The question "how many stories are done / automated / passing, and what did it
+cost?" is answered by the **QA Director dashboard**:
+
+```bash
+python -m omnitest.reporting.director_dashboard   # artifacts/reports/director-dashboard.html
+```
+
+It joins three sources **by story ID** and renders one page:
+
+| Source | Contributes |
+|--------|-------------|
+| Allure results (`artifacts/allure-results`) | automation status + pass/fail per story |
+| Prompt JSONL (`artifacts/prompts`) | AI calls + cost per story |
+| Stories manifest (`docs/stories.json`, optional) | planned list, title, epic, priority, workflow status |
+
+**The convention that makes it work:** tag a test with `@pytest.mark.story("OMNI-142")`.
+The autouse `_story_context` fixture then (a) sets the story in the AI context so
+every agent call that test makes is logged with `tags.story`, and (b) stamps the
+Allure `story` label. Both sides now share the ID, so the dashboard can roll up:
+
+- **Coverage** — automated / total, and a per-priority (P1/P2/P3) coverage bar
+- **Quality** — pass rate, passing vs failing stories
+- **Throughput** — a daily snapshot is appended to
+  `artifacts/reports/director-history.csv` (trend it over the sprint)
+- **Efficiency** — AI cost per story, rolled up
+
+The manifest (`docs/stories.json`, format in `docs/stories.example.json`) is
+optional — without it the dashboard shows whatever stories appear in the tests
+and prompt logs; with it, you also see planned-but-not-yet-automated stories
+(in-review / backlog), which is what makes it a true "X of 55 done" director view.
+Both dashboards refresh automatically after every scheduled run.
+
+---
+
 ## Q&A (post your questions here)
 
 > Add your questions below and I'll answer each one inline in this file.

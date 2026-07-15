@@ -8,6 +8,13 @@ Feed the completed block straight into `TestGeneratorAgent.gherkin(...)`.
 
 ---
 
+> **Story ID flows everywhere.** Use the same `<ID>` as the test marker
+> `@pytest.mark.story("<ID>")` (or the `story("<ID>")` context manager). That tags
+> the AI calls *and* the Allure results, so the **QA Director dashboard**
+> (`python -m omnitest.reporting.director_dashboard`) can roll up automation
+> status, pass rate, and AI cost per story. Optionally list all sprint stories in
+> `docs/stories.json` (see `docs/stories.example.json`) for planned-vs-done coverage.
+
 ## Story: <ID> — <one-line title>
 
 **As a** <role>

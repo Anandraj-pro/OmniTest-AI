@@ -15,10 +15,31 @@ from omnitest.ai.agents import (
     FailureAnalystAgent,
     TestGeneratorAgent,
 )
+from omnitest.ai.context import set_story
 from omnitest.email_ import make_email_client
 from omnitest.ui import BasePage
 
 ARTIFACTS = Path("artifacts")
+
+
+# ── Story attribution: @pytest.mark.story("OMNI-142") ───
+@pytest.fixture(autouse=True)
+def _story_context(request):
+    """Bind the test's story ID to the AI context and the Allure label, so both
+    the prompt tracker and Allure results carry it for the director dashboard.
+    """
+    marker = request.node.get_closest_marker("story")
+    story_id = marker.args[0] if marker and marker.args else None
+    set_story(story_id)
+    if story_id:
+        try:
+            import allure
+
+            allure.dynamic.label("story", story_id)
+        except Exception:  # pragma: no cover - allure optional at runtime
+            pass
+    yield
+    set_story(None)
 
 
 # ── adapters ────────────────────────────────────────────

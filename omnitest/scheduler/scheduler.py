@@ -19,7 +19,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from omnitest.config.settings import PROJECT_ROOT
-from omnitest.reporting import build_dashboard
+from omnitest.reporting import build_dashboard, build_director_dashboard
 from omnitest.utils.logger import get_logger
 from omnitest.utils.notify import allure_button, notify_slack
 
@@ -67,8 +67,9 @@ def _run(cmd: list[str], label: str) -> None:
     if proc.returncode != 0:
         log.warning("[%s] stderr:\n%s", label, proc.stderr[-2000:])
         _alert_slack_suite_failure(label, proc.returncode, proc.stdout, proc.stderr)
-    # refresh the manager-facing prompt dashboard after every run
+    # refresh the manager + director dashboards after every run
     build_dashboard()
+    build_director_dashboard()
 
 
 def _alert_slack_suite_failure(label: str, returncode: int,

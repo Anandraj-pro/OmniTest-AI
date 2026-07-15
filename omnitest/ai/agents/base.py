@@ -6,6 +6,7 @@ import re
 from typing import Any
 
 from omnitest.ai.client import AIClient, Tier
+from omnitest.ai.context import get_story
 from omnitest.ai.tcro import TCRO
 
 
@@ -38,8 +39,14 @@ class BaseAgent:
             rules=[*self.base_rules, *(rules or [])],
             output=output,
         )
+        # Attribute this call to the active user story (if any) for the director view.
+        merged_tags = dict(tags or {})
+        story_id = get_story()
+        if story_id and "story" not in merged_tags:
+            merged_tags["story"] = story_id
         return self.client.run(
-            tcro, agent=self.name, tier=self.tier, max_tokens=max_tokens, tags=tags
+            tcro, agent=self.name, tier=self.tier, max_tokens=max_tokens,
+            tags=merged_tags or None,
         )
 
     # ── helpers ─────────────────────────────────────────

@@ -1,0 +1,7 @@
+[
+  {"id": "OMNI-142", "title": "Create user via API", "epic": "Onboarding", "priority": "P1", "type": "api", "status": "in_progress"},
+  {"id": "OMNI-143", "title": "New user receives welcome email", "epic": "Onboarding", "priority": "P1", "type": "email", "status": "in_progress"},
+  {"id": "OMNI-150", "title": "Login with valid credentials", "epic": "Auth", "priority": "P1", "type": "ui", "status": "in_progress"},
+  {"id": "OMNI-151", "title": "Password reset flow", "epic": "Auth", "priority": "P2", "type": "email", "status": "in_review"},
+  {"id": "OMNI-160", "title": "Export report to CSV", "epic": "Reporting", "priority": "P3", "type": "ui", "status": "backlog"}
+]

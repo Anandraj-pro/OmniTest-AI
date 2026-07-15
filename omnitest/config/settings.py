@@ -43,6 +43,10 @@ class Settings(BaseSettings):
 
     # ── Prompt tracking (manager visibility) ────────────
     prompt_log_dir: Path = Field(Path("artifacts/prompts"), alias="OMNI_PROMPT_LOG_DIR")
+    allure_results_dir: Path = Field(Path("artifacts/allure-results"), alias="OMNI_ALLURE_RESULTS_DIR")
+    # Optional planned-story manifest (JSON) — the director dashboard joins it with
+    # Allure results + prompt logs to show sprint throughput by story.
+    stories_manifest: Path = Field(Path("docs/stories.json"), alias="OMNI_STORIES_MANIFEST")
 
     # ── App under test ──────────────────────────────────
     base_url: str = Field("https://example.com", alias="OMNI_BASE_URL")
@@ -61,7 +65,18 @@ class Settings(BaseSettings):
 
     @property
     def abs_prompt_log_dir(self) -> Path:
-        p = self.prompt_log_dir
+        return self._abs(self.prompt_log_dir)
+
+    @property
+    def abs_allure_results_dir(self) -> Path:
+        return self._abs(self.allure_results_dir)
+
+    @property
+    def abs_stories_manifest(self) -> Path:
+        return self._abs(self.stories_manifest)
+
+    @staticmethod
+    def _abs(p: Path) -> Path:
         return p if p.is_absolute() else PROJECT_ROOT / p
 
 
